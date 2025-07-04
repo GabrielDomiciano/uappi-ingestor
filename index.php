@@ -1,24 +1,55 @@
 <?php
-
-// Carrega o autoloader do Composer
+/**
+ * Este arquivo é um executor/roteador local para testar as funções serverless.
+ * Ele NÃO deve ser incluído no build de produção.
+ *
+ * @author Gabriel Domiciano
+ */
 require __DIR__ . '/vendor/autoload.php';
-
-// Carrega as variáveis de ambiente do .env
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-// Obtém o caminho da requisição (ex: /vtex/products/create.php)
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-
-// Constrói o caminho completo do arquivo na pasta public
 $filePath = __DIR__ . '/public' . $requestUri;
 
-// Verifica se o arquivo existe e é um arquivo PHP
-if (file_exists($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) === 'php') {
-  // Inclui o arquivo PHP solicitado
-  require $filePath;
-} else {
-  // Retorna 404 se o arquivo não for encontrado
-  http_response_code(404);
-  echo '404 Not Found';
+if(pathinfo($filePath, PATHINFO_EXTENSION) === '') {
+  $filePath .= '.php';
 }
+
+//VERIFICA SE O ARQUIVO EXISTE
+if (!file_exists($filePath)) {
+  http_response_code(404);
+  header('Content-Type: application/json');
+  echo json_encode(['error' => 'Endpoint não encontrado.']);
+  exit;
+}
+
+require_once $filePath;
+
+//VERIFICA SE A FUNÇÃO PRINCIPAL EXISTE
+if (!function_exists('main')) {
+  http_response_code(500);
+  header('Content-Type: application/json');
+  echo json_encode(['error' => 'A função principal (main) não foi encontrada no endpoint: ' . basename($filePath)]);
+  exit;
+}
+
+//PREPARA OS DADOS DE REQUISIÇÃO
+$requestBody  = file_get_contents('php://input');
+$args         = json_decode($requestBody, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+  $args = [];
+}
+
+//EXECUTA A FUNÇÃO PRINCIPAL
+$response = main($args);
+
+//TRADUZ PARA UMA RESPOSTA HTTP
+http_response_code($response['statusCode'] ?? 500);
+if (isset($response['headers'])) {
+  foreach ($response['headers'] as $key => $value) {
+    header("$key: $value");
+  }
+}
+
+echo $response['body'] ?? '';
