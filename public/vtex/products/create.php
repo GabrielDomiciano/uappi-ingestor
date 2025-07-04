@@ -1,10 +1,17 @@
 <?php
 
+use Src\Http\ResponseHandler;
 use Src\Vtex\Products\Mappers\VtexToUappiProductMapper;
 use Src\Services\Products\UappiProductService;
 
-$data     = json_decode(file_get_contents('php://input'), true);
-$produto  = (new VtexToUappiProductMapper())->map($data);
-$resposta = (new UappiProductService())->handler($produto);
+$responseHandler = new ResponseHandler();
 
-echo json_encode($resposta);
+$vtexPayload = json_decode(file_get_contents('php://input'), true);
+if(empty($vtexPayload)) {
+ $responseHandler->sendError('Payload da VTEX ausente', 400);
+}
+
+$uappiPayload   = (new VtexToUappiProductMapper())->map($vtexPayload);
+$uappiResponse  = (new UappiProductService())->handler($uappiPayload);
+
+$responseHandler->handleUappiResponse($uappiResponse);

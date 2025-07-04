@@ -2,6 +2,8 @@
 
 namespace Src\Services\Auth;
 
+use Src\Http\RequestHandler;
+
 /**
  * Classe responsável por gerenciar a autenticação com a API da Uappi.
  *
@@ -30,16 +32,24 @@ class UappiAuthService {
   private string $secretKey;
 
   /**
+   * Responsável por manipular requisições HTTP.
+   *
+   * @var RequestHandler
+   */
+  private RequestHandler $requestHandler;
+
+  /**
    * Método responsável por construir a classe com as credenciais da API.
    *
    * @param string $endpoint    O endpoint da API da Uappi.
    * @param string $apiKey      A chave da API para autenticação.
    * @param string $secretKey   A chave secreta para autenticação.
    */
-  public function __construct(string $endpoint, string $apiKey, string $secretKey) {
-    $this->endpoint = $endpoint;
-    $this->apiKey = $apiKey;
-    $this->secretKey = $secretKey;
+  public function __construct(string $endpoint, string $apiKey, string $secretKey){
+    $this->endpoint         = $endpoint;
+    $this->apiKey           = $apiKey;
+    $this->secretKey        = $secretKey;
+    $this->requestHandler   = new RequestHandler();
   }
 
   /**
@@ -53,49 +63,6 @@ class UappiAuthService {
     return $this->generateToken();
   }
 
-  
-
-  /**
-   * Método responsável por gerar um novo token de autenticação junto à API da Uappi.
-   *
-   * @return string     O novo token de autenticação.
-   * @throws \Exception Se houver um erro na requisição ou na resposta da API.
-   */
-  private function generateToken(): string {
-    $ch = curl_init("{$this->endpoint}/auth");
-
-    curl_setopt_array($ch, [
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_POST => true,
-      CURLOPT_POSTFIELDS => json_encode([
-        'apiKey'    => $this->apiKey,
-        'secretKey' => $this->secretKey
-      ]),
-      CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'App-Token: wapstore',
-      ]
-    ]);
-
-    $response = curl_exec($ch);
-
-    if (curl_errno($ch)) {
-      throw new \Exception('Erro ao gerar token: ' . curl_error($ch));
-    }
-
-    curl_close($ch);
-
-    $data = json_decode($response, true);
-
-    if(isset($data['error']) || !isset($data['token'])) {
-      throw new \Exception('Erro ao gerar token: ' . ($data['error'] ?? 'Token não recebido'));
-    }
-
-    
-
-    return $data['token'];
-  }
-
   /**
    * Método responsável por forçar a geração de um novo token, ignorando o cache.
    *
@@ -104,5 +71,28 @@ class UappiAuthService {
    */
   public function forceNewToken(): string{
     return $this->generateToken();
+  }
+
+  /**
+   * Método responsável por gerar um novo token de autenticação junto à API da Uappi.
+   *
+   * @return string     O novo token de autenticação.
+   * @throws \Exception Se a resposta da API for inválida ou contiver erros.
+   */
+  private function generateToken(): string{
+    $url      = "{$this->endpoint}/auth";
+    $payload  = ['apiKey' => $this->apiKey, 'secretKey' => $this->secretKey];
+    $headers  = ['Content-Type: application/json', 'App-Token: wapstore'];
+
+    $response = $this->requestHandler->send('POST', $url, $payload, $headers);
+
+    $body     = $response['body'];
+    $httpCode = $response['httpCode'];
+
+    if($httpCode !== 201 || !isset($body['token'])) {
+      throw new \Exception('Erro ao gerar token: ' . ($body['error'] ?? 'Token não recebido'));
+    }
+
+    return $body['token'];
   }
 }

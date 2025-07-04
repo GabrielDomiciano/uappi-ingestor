@@ -3,6 +3,7 @@
 namespace Src\Services;
 
 use Src\Services\Auth\UappiAuthService;
+use Src\Http\RequestHandler;
 
 /**
  * Classe abstrata responsável por fornecer a base para os serviços da Uappi.
@@ -26,15 +27,23 @@ abstract class AbstractUappiService {
   protected UappiAuthService $authService;
 
   /**
-   * Método responsável por construir a classe e inicializar o serviço de autenticação.
+   * Responsável por manipular requisições HTTP.
+   *
+   * @var RequestHandler
    */
-  public function __construct() {
-    $this->endpoint = $_ENV['UAPPI_ENDPOINT'];
-    $this->authService = new UappiAuthService(
+  protected RequestHandler $requestHandler;
+
+  /**
+   * Construtor da classe.
+   */
+  public function __construct(){
+    $this->endpoint       = $_ENV['UAPPI_ENDPOINT'];
+    $this->authService    = new UappiAuthService(
       $_ENV['UAPPI_ENDPOINT'],
       $_ENV['UAPPI_API_KEY'],
       $_ENV['UAPPI_SECRET_KEY']
     );
+    $this->requestHandler = new RequestHandler();
   }
 
   /**
@@ -50,61 +59,38 @@ abstract class AbstractUappiService {
    * Inclui lógica de reautenticação em caso de token inválido (HTTP 401).
    *
    * @param string $method    O método HTTP (GET, POST, PUT, DELETE).
-   * @param string $endpoint  O endpoint específico da API.
-   * @param array  $data      Os dados a serem enviados na requisição.
-   * @return array            A resposta da API, incluindo o código HTTP.
+   * @param string $url       A URL completa do endpoint.
+   * @param array $data       Os dados a serem enviados.
+   * @return array            A resposta da API, incluindo corpo e código HTTP.
    */
-  protected function sendRequest(string $method, string $endpoint, array $data = []): array {
-    $token = $this->authService->getToken();
-    $response = $this->doRequest($method, $endpoint, $data, $token);
+  protected function sendRequest(string $method, string $url, array $data = []): array{
+    $token    = $this->authService->getToken();
+    $response = $this->doRequest($method, $url, $data, $token);
 
-    if (isset($response['error']) && $response['error'] === 'Token inválido.') {
-      // Se o token for inválido, força a geração de um novo e tenta novamente
-      $token = $this->authService->forceNewToken();
-      $response = $this->doRequest($method, $endpoint, $data, $token);
+    if ($response['httpCode'] === 401 || $response['error'] === 'Token inválido') {
+      $token    = $this->authService->forceNewToken();
+      $response = $this->doRequest($method, $url, $data, $token);
     }
 
-    return $response;
+    return array_merge($response['body'], ['httpCode' => $response['httpCode']]);
   }
 
   /**
    * Método responsável por executar a requisição HTTP real.
    *
-   * @param string  $method    O método HTTP.
-   * @param string  $endpoint  O endpoint da API.
-   * @param array   $data      Os dados da requisição.
-   * @param string  $token     O token de autenticação a ser usado.
-   * @return array             A resposta decodificada da API, incluindo o código HTTP.
+   * @param string $method  O método HTTP.
+   * @param string $url     A URL do endpoint.
+   * @param array  $data    Os dados da requisição.
+   * @param string $token   O token de autenticação.
+   * @return array          A resposta da API (corpo e código HTTP).
    */
-  private function doRequest(string $method, string $endpoint, array $data, string $token): array{
-    $ch = curl_init($endpoint);
-
+  private function doRequest(string $method, string $url, array $data, string $token): array{
     $headers = [
-        'Content-Type: application/json',
-        'App-Token: wapstore',
-        'Authorization: Bearer ' . $token,
+      'Content-Type: application/json',
+      'App-Token: wapstore',
+      'Authorization: Bearer ' . $token,
     ];
 
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CUSTOMREQUEST  => $method,
-        CURLOPT_POSTFIELDS     => json_encode($data),
-        CURLOPT_HTTPHEADER     => $headers
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    if (curl_errno($ch)) {
-        return ['error' => curl_error($ch)];
-    }
-
-    curl_close($ch);
-    $decodedResponse = json_decode($response, true) ?? ['error' => 'Resposta inválida'];
-    $decodedResponse['httpCode'] = $httpCode;
-
-    return $decodedResponse;
+    return $this->requestHandler->send($method, $url, $data, $headers);
   }
 }
-
-
