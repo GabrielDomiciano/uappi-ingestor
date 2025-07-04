@@ -17,7 +17,7 @@ O projeto segue um padrão onde cada endpoint é uma função PHP independente. 
 ## Como Começar
 
 ### 1. Pré-requisitos
-- PHP
+- PHP 8.0+
 - Composer
 
 ### 2. Instalação
