@@ -71,8 +71,6 @@ class VtexToUappiProductMapper{
       'landingPages'         => [],
       'filtros'              => [],
       'caracteristicas'      => (object)[],
-      // 'idAtributoUnico'      => null,
-      // 'atributosSimples'     => [],
     ];
   }
 }
