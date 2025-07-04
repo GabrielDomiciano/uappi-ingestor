@@ -75,4 +75,4 @@ Por exemplo:
 ---
 
 ## Contato
-- Criado por: Gabriel Domiciano
+- **Gabriel Domiciano** -> gabriel.ads18@gmail.com
