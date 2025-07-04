@@ -32,9 +32,9 @@ class VtexToUappiProductMapper{
       'sincronizarApi'       => false,
       'sincronizarHub'       => true,
       'precos'               => [
-        'precoDe'          => $vtex['PriceFrom'] ?? 0,
-        'precoPor'         => $vtex['Price'] ?? 0,
-        'precoCusto'       => $vtex['CostPrice'] ?? 0,
+        'precoDe'          => $vtex['PriceFrom']    ?? 0.01,
+        'precoPor'         => $vtex['Price']        ?? 0.01,
+        'precoCusto'       => $vtex['CostPrice']    ?? 0,
         'precoEspecial'    => $vtex['SpecialPrice'] ?? 0,
         'editarPreco'      => false,
         'dadosDescontoVista' => [
@@ -50,10 +50,10 @@ class VtexToUappiProductMapper{
       'tabelaMedida'         => '',
       'video'                => '',
       'dimensoes'            => [
-        'altura'      => $vtex['Height'] ?? 0,
-        'largura'     => $vtex['Width'] ?? 0,
-        'comprimento' => $vtex['Length'] ?? 0,
-        'peso'        => $vtex['WeightKg'] ?? 0,
+        'altura'      => $vtex['Height']    ?? 0.1,
+        'largura'     => $vtex['Width']     ?? 0.1,
+        'comprimento' => $vtex['Length']    ?? 0.1,
+        'peso'        => $vtex['WeightKg']  ?? 0.001,
       ],
       'prazoProducao'        => 0,
       'prazoFornecedor'      => 0,
@@ -72,7 +72,7 @@ class VtexToUappiProductMapper{
       'filtros'              => [],
       'caracteristicas'      => (object)[],
       // 'idAtributoUnico'      => null,
-      'atributosSimples'     => [],
+      // 'atributosSimples'     => [],
     ];
   }
 }
